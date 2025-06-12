@@ -25,17 +25,34 @@
     #startButton {
       left: 130px;
     }
+    #loading, #countdown {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 48px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 20;
+    }
+    #countdown {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <select id="difficultySelector">
+  <div id="loading">載入中...</div>
+  <div id="countdown"></div>
+  <select id="difficultySelector" disabled>
     <option value="0.2">簡單</option>
     <option value="0.4">普通</option>
     <option value="0.6">中等</option>
     <option value="0.8">困難</option>
     <option value="1.0">地獄</option>
   </select>
-  <button id="startButton">開始遊戲</button>
+  <button id="startButton" disabled>開始遊戲</button>
   <canvas id="gameCanvas"></canvas>
 
   <script>
@@ -51,12 +68,25 @@
     const roadRight = roadLeft + roadWidth;
 
     const carImg = new Image();
-    carImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Red_car_top.svg/200px-Red_car_top.svg.png';
-
     const treeImg = new Image();
-    treeImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Tree_font_awesome.svg/64px-Tree_font_awesome.svg.png';
-
     const houseImg = new Image();
+    let imagesLoaded = 0;
+
+    function checkImagesLoaded() {
+      imagesLoaded++;
+      if (imagesLoaded === 3) {
+        document.getElementById('loading').style.display = 'none';
+        startButton.disabled = false;
+        difficultySelector.disabled = false;
+      }
+    }
+
+    carImg.onload = checkImagesLoaded;
+    treeImg.onload = checkImagesLoaded;
+    houseImg.onload = checkImagesLoaded;
+
+    carImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Red_car_top.svg/200px-Red_car_top.svg.png';
+    treeImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Tree_font_awesome.svg/64px-Tree_font_awesome.svg.png';
     houseImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Font_Awesome_5_solid_home.svg/64px-Font_Awesome_5_solid_home.svg.png';
 
     let backgroundOffset = 0;
@@ -91,18 +121,56 @@
 
     const difficultySelector = document.getElementById('difficultySelector');
     const startButton = document.getElementById('startButton');
+    const countdownDiv = document.getElementById('countdown');
+
     difficultySelector.addEventListener('change', () => {
       sensitivity = parseFloat(difficultySelector.value);
     });
 
     startButton.addEventListener('click', () => {
-      gameRunning = true;
-      gameLoop();
+      requestGyroPermission();
+      startCountdown(() => {
+        gameRunning = true;
+        gameLoop();
+      });
     });
 
-    window.addEventListener('deviceorientation', (event) => {
+    function startCountdown(callback) {
+      let count = 3;
+      countdownDiv.style.display = 'block';
+      countdownDiv.textContent = count;
+      const interval = setInterval(() => {
+        count--;
+        if (count === 0) {
+          clearInterval(interval);
+          countdownDiv.style.display = 'none';
+          callback();
+        } else {
+          countdownDiv.textContent = count;
+        }
+      }, 1000);
+    }
+
+    function requestGyroPermission() {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(response => {
+            if (response === 'granted') {
+              window.addEventListener('deviceorientation', handleOrientation);
+            } else {
+              alert('未授權使用裝置方向感測功能');
+            }
+          })
+          .catch(console.error);
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+    }
+
+    function handleOrientation(event) {
       tiltX = event.gamma || 0;
-    });
+    }
 
     window.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowLeft') leftPressed = true;
