@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>賽車遊戲 - 手機陀螺儀控制</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #333;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+      background: linear-gradient(#555, #222);
+    }
+    #difficultySelector {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <select id="difficultySelector">
+    <option value="0.2">簡單</option>
+    <option value="0.4">普通</option>
+    <option value="0.6">中等</option>
+    <option value="0.8">困難</option>
+    <option value="1.0">地獄</option>
+  </select>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    const roadWidth = width * 0.6;
+    const roadLeft = (width - roadWidth) / 2;
+    const roadRight = roadLeft + roadWidth;
+
+    let car = {
+      x: width / 2,
+      y: height - 100,
+      width: 50,
+      height: 100,
+      speed: 5
+    };
+
+    let tiltX = 0;
+    let sensitivity = 0.2; // 預設簡單模式
+
+    const difficultySelector = document.getElementById('difficultySelector');
+    difficultySelector.addEventListener('change', () => {
+      sensitivity = parseFloat(difficultySelector.value);
+    });
+
+    window.addEventListener('deviceorientation', (event) => {
+      tiltX = event.gamma || 0;
+    });
+
+    function drawRoad() {
+      ctx.fillStyle = '#222';
+      ctx.fillRect(roadLeft, 0, roadWidth, height);
+    }
+
+    function drawCar() {
+      ctx.fillStyle = 'red';
+      ctx.fillRect(car.x - car.width / 2, car.y - car.height / 2, car.width, car.height);
+    }
+
+    function updateCar() {
+      car.x += tiltX * sensitivity;
+      if (car.x < roadLeft + car.width / 2 || car.x > roadRight - car.width / 2) {
+        ctx.fillStyle = 'rgba(255,0,0,0.5)';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = 'white';
+        ctx.font = '40px sans-serif';
+        ctx.fillText('你開出道路了！', width / 2 - 100, height / 2);
+        return false;
+      }
+      return true;
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, width, height);
+      drawRoad();
+      drawCar();
+      if (updateCar()) {
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
