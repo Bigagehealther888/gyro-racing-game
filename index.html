@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>賽車遊戲 - 手機陀螺儀控制</title>
+  <title>賽車遊戲 - 手機陀螺儀與鍵盤控制</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -15,12 +15,15 @@
       display: block;
       background: linear-gradient(#555, #222);
     }
-    #difficultySelector {
+    #difficultySelector, #startButton {
       position: absolute;
       top: 10px;
       left: 10px;
       z-index: 10;
       font-size: 16px;
+    }
+    #startButton {
+      left: 130px;
     }
   </style>
 </head>
@@ -32,7 +35,7 @@
     <option value="0.8">困難</option>
     <option value="1.0">地獄</option>
   </select>
-
+  <button id="startButton">開始遊戲</button>
   <canvas id="gameCanvas"></canvas>
 
   <script>
@@ -47,24 +50,68 @@
     const roadLeft = (width - roadWidth) / 2;
     const roadRight = roadLeft + roadWidth;
 
+    const carImg = new Image();
+    carImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Red_car_top.svg/200px-Red_car_top.svg.png';
+
+    const treeImg = new Image();
+    treeImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Tree_font_awesome.svg/64px-Tree_font_awesome.svg.png';
+
+    const houseImg = new Image();
+    houseImg.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Font_Awesome_5_solid_home.svg/64px-Font_Awesome_5_solid_home.svg.png';
+
+    let backgroundOffset = 0;
+    let roadsideObjects = [];
+
+    for (let i = 0; i < 10; i++) {
+      roadsideObjects.push({
+        x: roadLeft - 70,
+        y: i * 150,
+        img: i % 2 === 0 ? treeImg : houseImg
+      });
+      roadsideObjects.push({
+        x: roadRight + 10,
+        y: i * 150 + 75,
+        img: i % 2 === 0 ? houseImg : treeImg
+      });
+    }
+
     let car = {
       x: width / 2,
-      y: height - 100,
+      y: height - 120,
       width: 50,
       height: 100,
       speed: 5
     };
 
     let tiltX = 0;
-    let sensitivity = 0.2; // 預設簡單模式
+    let sensitivity = 0.2;
+    let leftPressed = false;
+    let rightPressed = false;
+    let gameRunning = false;
 
     const difficultySelector = document.getElementById('difficultySelector');
+    const startButton = document.getElementById('startButton');
     difficultySelector.addEventListener('change', () => {
       sensitivity = parseFloat(difficultySelector.value);
     });
 
+    startButton.addEventListener('click', () => {
+      gameRunning = true;
+      gameLoop();
+    });
+
     window.addEventListener('deviceorientation', (event) => {
       tiltX = event.gamma || 0;
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') leftPressed = true;
+      if (e.key === 'ArrowRight') rightPressed = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft') leftPressed = false;
+      if (e.key === 'ArrowRight') rightPressed = false;
     });
 
     function drawRoad() {
@@ -73,12 +120,20 @@
     }
 
     function drawCar() {
-      ctx.fillStyle = 'red';
-      ctx.fillRect(car.x - car.width / 2, car.y - car.height / 2, car.width, car.height);
+      ctx.drawImage(carImg, car.x - car.width / 2, car.y - car.height / 2, car.width, car.height);
+    }
+
+    function drawRoadside() {
+      roadsideObjects.forEach(obj => {
+        ctx.drawImage(obj.img, obj.x, obj.y + backgroundOffset % 150 - 150, 50, 50);
+      });
     }
 
     function updateCar() {
+      if (leftPressed) car.x -= 5;
+      if (rightPressed) car.x += 5;
       car.x += tiltX * sensitivity;
+
       if (car.x < roadLeft + car.width / 2 || car.x > roadRight - car.width / 2) {
         ctx.fillStyle = 'rgba(255,0,0,0.5)';
         ctx.fillRect(0, 0, width, height);
@@ -91,15 +146,16 @@
     }
 
     function gameLoop() {
+      if (!gameRunning) return;
       ctx.clearRect(0, 0, width, height);
       drawRoad();
+      drawRoadside();
       drawCar();
+      backgroundOffset += car.speed;
       if (updateCar()) {
         requestAnimationFrame(gameLoop);
       }
     }
-
-    gameLoop();
   </script>
 </body>
 </html>
